@@ -1,0 +1,11 @@
+# Ignore build files
+build-*/**
+
+# Ignore data
+*/bin/data/**
+
+# Ignore .user files
+*/*.qbs.user
+
+# Debug files
+**/*_debug

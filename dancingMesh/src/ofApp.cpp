@@ -1,5 +1,7 @@
 #include "ofApp.h"
 
+// DANCING MESH
+
 //--------------------------------------------------------------
 void ofApp::setup(){
     //Set up sound sample

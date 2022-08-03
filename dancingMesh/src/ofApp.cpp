@@ -3,9 +3,9 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
     //Set up sound sample
-    sound.loadSound( "112 Balam - Yucatan.mp3" );
+    sound.load( "112 Balam - Yucatan.mp3" );
     sound.setLoop( true );
-    sound.play();
+
     spectrum.resize(N, 0.0f);
     p.resize(n);
 
@@ -15,17 +15,6 @@ void ofApp::setup(){
     }
 
     show_spectrum = false;
-
-    //Set spectrum values to 0
-    //for (size_t i=0; i<spectrum.size(); i++) {
-    //    spectrum[i] = 0.0f;
-    //}
-
-    //Initialize points offsets by random numbers
-    //for ( int j=0; j<n; j++ ) {
-    //    tx[j] = ofRandom( 0, 1000 );
-    //    ty[j] = ofRandom( 0, 1000 );
-    //}
 
 }
 
@@ -41,7 +30,7 @@ void ofApp::update(){
     //by slowly decreasing its values and getting maximum with val
     //So we will have slowly falling peaks in spectrum
     for ( int i=0; i<N; i++ ) {
-        spectrum[i] *= 0.97;	//Slow decreasing
+        spectrum[i] *= 0.98;	//Slow decreasing
         spectrum[i] = max( spectrum[i], val[i] );
     }
 
@@ -56,7 +45,7 @@ void ofApp::update(){
     //Update Rad and Vel from spectrum
     //Note, the parameters in ofMap's were tuned for best result
     //just for current music track
-    Rad = ofMap( spectrum[ bandRad ], 1, 3, 400, 1000, true );
+    Rad = ofMap( spectrum[ bandRad ], 1, 3, 500, 1200, true );
     Vel = ofMap( spectrum[ bandVel ], 0, 0.1, 0.05, 0.5 );
     //Update particles positions
     for (int j=0; j<n; j++) {
@@ -69,20 +58,30 @@ void ofApp::update(){
     }
 
     //Calculate color based on range
+    analyseFFT();
+
+}
+
+//--------------------------------------------------------------
+void ofApp::analyseFFT(){
+
+    //Calculate color based on range
     std::vector<float>::iterator rg_it = std::next(spectrum.begin(), 10);
     std::vector<float>::iterator gb_it = std::next(spectrum.begin(), 100);
 
     bass = std::accumulate(spectrum.begin(), rg_it, 0.0f);
     mids = std::accumulate(rg_it, gb_it, 0.0f);
     highs = std::accumulate(gb_it, spectrum.end(), 0.0f);
-    totals = bass + mids + highs;
+    totals = std::accumulate(spectrum.begin(), spectrum.end(), 0.0f);
+
+
     red = static_cast<int>(std::min(ofMap(bass, 0, 6, 0, 255), 255.0f));
     green = static_cast<int>(std::min(ofMap(mids, 0, 6, 0, 255), 255.0f));
     blue = static_cast<int>(std::min(ofMap(highs, 0, 6, 0, 255), 255.0f));
-
-    std::cout << red << ", " << green << ", " << blue << std::endl;
+    brightness = std::min(ofMap(totals, 0, 10, 100, 255), 255.0f);
 
 }
+
 
 //--------------------------------------------------------------
 void ofApp::draw(){
@@ -94,9 +93,9 @@ void ofApp::draw(){
         //Draw background rect for spectrum
         ofSetColor( ofColor::black );
         ofFill();
-        ofRect( 10, 700, N * 6, -100 );
+        ofDrawRectangle( 10, 700, N * 6, -100 );
         //Draw spectrum
-        ofSetColor( ofColor::ghostWhite );
+        //ofSetColor( ofColor::ghostWhite );
         for (int i=0; i<N; i++) {
             //Draw bandRad and bandVel by black color,
             //and other by gray color
@@ -106,7 +105,7 @@ void ofApp::draw(){
             else {
                 ofSetColor( ofColor::lightGoldenRodYellow ); //Gray color
             }
-            ofRect( 10 + i * 5, 700, 3, -spectrum[i] * 100 );
+            ofDrawRectangle( 10 + i * 5, 700, 3, -spectrum[i] * 100 );
         }
     }
 
@@ -118,20 +117,28 @@ void ofApp::draw(){
 
     //Draw points
     ofEnableAlphaBlending();
-    ofSetColor( ofColor(red, green, blue, 120 )); // higher alpha is more opaque
+    //ofColor drawColor;
     ofFill();
     for (int i = 0; i < n; ++i) {
-        ofCircle( p[i], 2 );
+        float hue = ofMap(static_cast<float>(i), 0.0, static_cast<float>(n), 170.0f, 255.0f);
+        ofColor drawColor;
+        drawColor.setHsb(hue, 255, brightness, 120);
+        ofSetColor( drawColor ); // higher alpha is more opaque
+        ofDrawCircle( p[i], 2 );
     }
 
 
     //Draw lines between near points
-    float dist = 40;	//Threshold parameter of distance
+    float dist = 60;	//Threshold parameter of distance
     for (int j=0; j<n; ++j) {
         for (int k=j+1; k<n; ++k) {
             if ( ofDist( p[j].x, p[j].y, p[k].x, p[k].y )
                  < dist ) {
-                ofLine( p[j], p[k] );
+                float hue = ofMap(static_cast<float>(j), 0.0, static_cast<float>(n), 170.0f, 255.0f);
+                ofColor drawColor;
+                drawColor.setHsb(hue, 255, brightness, 120);
+                ofSetColor( drawColor ); // higher alpha is more opaque
+                ofDrawLine( p[j], p[k] );
             }
         }
     }
@@ -147,6 +154,8 @@ void ofApp::keyPressed(int key){
         case 'g':
             show_spectrum = !show_spectrum;
             break;
+        case 'p':
+            sound.play();
         default:
             break;
     }

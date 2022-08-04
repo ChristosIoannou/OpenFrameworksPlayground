@@ -21,11 +21,17 @@ void ofApp::setup(){
     mesh.enableColors();
 
     for (int i = 0; i < n; ++i){
+
+        // assign a colour between blue and red
+        float hue = ofMap(static_cast<float>(i), 0.0, static_cast<float>(n), 0.66f, 1.0f);
+        ofFloatColor drawColor;
+        drawColor.setHsb(hue, 1.0, 1.0, 0.47);
+
+        // create point and push to mesh
         ofVec3f temp(ofRandom(-500.0, 500.0), ofRandom(-500.0, 500.0), ofRandom(-500.0, 500.0));
         points.push_back(temp);
         mesh.addVertex(temp);
-        // cycle through alternating red/blue or 50/50 split
-        mesh.addColor(ofFloatColor(1.0, 0.0, 0.0, 0.5));
+        mesh.addColor(drawColor);
     }
 
     // Set up initial position for cam
@@ -82,7 +88,7 @@ void ofApp::update(){
 
     // Let's add some lines!
     mesh.clearIndices();
-    float connectionDistance = 60;
+    float connectionDistance = 80;
     int numVerts = mesh.getNumVertices();
     for (int a=0; a<numVerts; ++a) {
         ofVec3f verta = mesh.getVertex(a);
@@ -130,7 +136,7 @@ void ofApp::draw(){
     ofBackground( ofColor::black);	//Set up the background
     ofEnableAlphaBlending();
 
-
+    cam.begin();
     if (show_spectrum){
         //Draw background rect for spectrum
         ofSetColor( ofColor::black );
@@ -167,7 +173,7 @@ void ofApp::draw(){
         ofColor drawColor;
         drawColor.setHsb(hue, 255, brightness, 120);
         ofSetColor( drawColor ); // higher alpha is more opaque
-        ofDrawCircle( mesh.getVertex(i), 2 );
+        ofDrawSphere( mesh.getVertex(i), 2 );
     }
 
     /*
@@ -188,7 +194,7 @@ void ofApp::draw(){
     */
 
     mesh.draw();
-
+    cam.end();
     //Restore coordinate system
     ofPopMatrix();
 }

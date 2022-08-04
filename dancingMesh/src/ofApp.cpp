@@ -14,7 +14,22 @@ void ofApp::setup(){
     for (int i = 0; i < n; ++i){
         tx.push_back(ofRandom(0, 1000));
         ty.push_back(ofRandom(0, 1000));
+        tz.push_back(ofRandom(0, 1000));
     }
+
+    mesh.setMode(OF_PRIMITIVE_LINES);
+    mesh.enableColors();
+
+    for (int i = 0; i < n; ++i){
+        ofVec3f temp(ofRandom(-500.0, 500.0), ofRandom(-500.0, 500.0), ofRandom(-500.0, 500.0));
+        points.push_back(temp);
+        mesh.addVertex(temp);
+        // cycle through alternating red/blue or 50/50 split
+        mesh.addColor(ofFloatColor(1.0, 0.0, 0.0, 0.5));
+    }
+
+    // Set up initial position for cam
+    cam.setPosition(0.0, 0.0, 1500.0);
 
     show_spectrum = false;
 
@@ -49,15 +64,40 @@ void ofApp::update(){
     //just for current music track
     Rad = ofMap( spectrum[ bandRad ], 1, 3, 500, 1200, true );
     Vel = ofMap( spectrum[ bandVel ], 0, 0.1, 0.05, 0.5 );
+
     //Update particles positions
+
     for (int j=0; j<n; j++) {
         tx[j] += Vel * dt;	//move offset
         ty[j] += Vel * dt;	//move offset
+        tz[j] += Vel * dt;
         //Calculate Perlin's noise in [-1, 1] and
         //multiply on Rad
-        p[j].x = ofSignedNoise( tx[j] ) * Rad;
-        p[j].y = ofSignedNoise( ty[j] ) * Rad;
+        ofVec3f newPosition = mesh.getVertex(j);
+        newPosition.x = ofSignedNoise( tx[j] ) * Rad;
+        newPosition.y = ofSignedNoise( ty[j] ) * Rad;
+        newPosition.z = ofSignedNoise( tz[j] ) * Rad;
+        mesh.setVertex(j, newPosition);
     }
+
+    // Let's add some lines!
+    mesh.clearIndices();
+    float connectionDistance = 60;
+    int numVerts = mesh.getNumVertices();
+    for (int a=0; a<numVerts; ++a) {
+        ofVec3f verta = mesh.getVertex(a);
+        for (int b=a+1; b<numVerts; ++b) {
+            ofVec3f vertb = mesh.getVertex(b);
+            float distance = verta.distance(vertb);
+            if (distance <= connectionDistance) {
+                // In OF_PRIMITIVE_LINES, every pair of vertices or indices will be
+                // connected to form a line
+                mesh.addIndex(a);
+                mesh.addIndex(b);
+            }
+        }
+    }
+
 
     //Calculate color based on range
     analyseFFT();
@@ -119,17 +159,18 @@ void ofApp::draw(){
 
     //Draw points
     ofEnableAlphaBlending();
-    //ofColor drawColor;
+    ofColor drawColor;
     ofFill();
+    brightness = 255;
     for (int i = 0; i < n; ++i) {
         float hue = ofMap(static_cast<float>(i), 0.0, static_cast<float>(n), 170.0f, 255.0f);
         ofColor drawColor;
         drawColor.setHsb(hue, 255, brightness, 120);
         ofSetColor( drawColor ); // higher alpha is more opaque
-        ofDrawCircle( p[i], 2 );
+        ofDrawCircle( mesh.getVertex(i), 2 );
     }
 
-
+    /*
     //Draw lines between near points
     float dist = 60;	//Threshold parameter of distance
     for (int j=0; j<n; ++j) {
@@ -144,7 +185,9 @@ void ofApp::draw(){
             }
         }
     }
+    */
 
+    mesh.draw();
 
     //Restore coordinate system
     ofPopMatrix();

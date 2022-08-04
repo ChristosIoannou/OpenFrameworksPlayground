@@ -32,11 +32,16 @@ public:
     int bandRad = 1;		//Band index in spectrum, affecting Rad value
     int bandVel = 100;		//Band index in spectrum, affecting Vel value
     const int n = 500;		//Number of cloud points
-    std::vector<float> tx, ty;		//Offsets for Perlin noise calculation for points
+    std::vector<float> tx, ty, tz;		//Offsets for Perlin noise calculation for points
     std::vector<ofPoint> p;			//Cloud's points positions
     float time0 = 0;		//Time value, used for dt computing
+    float time_elapsed;
     bool show_spectrum;
     float bass, mids, highs, totals;
     int red, green, blue;
     float brightness;
+
+    ofEasyCam cam;
+    ofMesh mesh;
+    std::vector<ofVec3f> points;
 };

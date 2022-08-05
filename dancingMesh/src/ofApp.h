@@ -22,6 +22,11 @@ public:
     void gotMessage(ofMessage msg);
 
     void analyseFFT();
+    void drawPoint(int i);
+    void drawPoints();
+    void drawSpectrum();
+    void createMesh();
+    void moveCamToPosition(ofNode node);
 
     ofSoundPlayer sound;	//Sound samplevoidkeyPressed(int key);
     bool play;
@@ -35,13 +40,21 @@ public:
     std::vector<float> tx, ty, tz;		//Offsets for Perlin noise calculation for points
     std::vector<ofPoint> p;			//Cloud's points positions
     float time0 = 0;		//Time value, used for dt computing
-    float time_elapsed;
-    bool show_spectrum;
+    bool showSpectrum = false;
     float bass, mids, highs, totals;
     int red, green, blue;
     float brightness;
+    float distanceToTarget;
+
+    bool earthOrbit = false;
+    bool earthLocked = false;
+    int earthId = 0;
+    ofNode earthNode;
+    float angle;
+    float angleH, angleV, roll, finalDistanceToTarget;
 
     ofEasyCam cam;
     ofMesh mesh;
+    ofLight light;
     std::vector<ofVec3f> points;
 };

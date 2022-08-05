@@ -8,6 +8,9 @@ void ofApp::setup(){
     sound.load( "112 Balam - Yucatan.mp3" );
     sound.setLoop( true );
 
+    ofBackground(ofColor::black);	//Set up the background
+    ofEnableAlphaBlending();
+
     spectrum.resize(N, 0.0f);
     p.resize(n);
 
@@ -20,24 +23,11 @@ void ofApp::setup(){
     mesh.setMode(OF_PRIMITIVE_LINES);
     mesh.enableColors();
 
-    for (int i = 0; i < n; ++i){
-
-        // assign a colour between blue and red
-        float hue = ofMap(static_cast<float>(i), 0.0, static_cast<float>(n), 0.66f, 1.0f);
-        ofFloatColor drawColor;
-        drawColor.setHsb(hue, 1.0, 1.0, 0.47);
-
-        // create point and push to mesh
-        ofVec3f temp(ofRandom(-500.0, 500.0), ofRandom(-500.0, 500.0), ofRandom(-500.0, 500.0));
-        points.push_back(temp);
-        mesh.addVertex(temp);
-        mesh.addColor(drawColor);
-    }
+    createMesh();
 
     // Set up initial position for cam
-    cam.setPosition(0.0, 0.0, 1500.0);
-
-    show_spectrum = false;
+    //cam.setAutoDistance(false);
+    //cam.setPosition(0.0, 0.0, 1500.0);
 
 }
 
@@ -104,6 +94,41 @@ void ofApp::update(){
         }
     }
 
+    if (earthOrbit) {
+        earthNode.setPosition(mesh.getVertex(0));
+
+        cam.lookAt(earthNode);
+        finalDistanceToTarget = 5; // + sin(time);
+        ofVec3f camPosition = cam.getPosition();
+        ofVec3f earthPosition = earthNode.getPosition();
+        ofVec3f camToEarth = camPosition.interpolate(earthPosition, 0.5*(cos(time/100) + 1));
+
+        if (camPosition.distance(earthPosition) > finalDistanceToTarget && !earthLocked){
+            //float x_time =
+            cam.setPosition(camToEarth);
+            if (camPosition.distance(earthPosition) == finalDistanceToTarget){
+                earthLocked = true;
+            }
+        }
+
+        if (earthLocked) {
+            angleH += 1.f;
+            if (angleH > 360.f)
+                angleH = 0.0f;
+
+            angleV += 0.25f;
+            if (angleV > 360.f)
+                angleV = 0.0f;
+
+            //if (bRoll) roll += 0.5f;
+
+            // convert angleV to range [-90,90] for latitude
+            float vFac = sin(angleV * M_PI / 180.f) * 90.f;
+            cam.orbit(angleH, vFac, finalDistanceToTarget, earthNode);
+            cam.lookAt(earthNode);
+        }
+    }
+
 
     //Calculate color based on range
     analyseFFT();
@@ -111,89 +136,22 @@ void ofApp::update(){
 }
 
 //--------------------------------------------------------------
-void ofApp::analyseFFT(){
-
-    //Calculate color based on range
-    std::vector<float>::iterator rg_it = std::next(spectrum.begin(), 10);
-    std::vector<float>::iterator gb_it = std::next(spectrum.begin(), 100);
-
-    bass = std::accumulate(spectrum.begin(), rg_it, 0.0f);
-    mids = std::accumulate(rg_it, gb_it, 0.0f);
-    highs = std::accumulate(gb_it, spectrum.end(), 0.0f);
-    totals = std::accumulate(spectrum.begin(), spectrum.end(), 0.0f);
-
-
-    red = static_cast<int>(std::min(ofMap(bass, 0, 6, 0, 255), 255.0f));
-    green = static_cast<int>(std::min(ofMap(mids, 0, 6, 0, 255), 255.0f));
-    blue = static_cast<int>(std::min(ofMap(highs, 0, 6, 0, 255), 255.0f));
-    brightness = std::min(ofMap(totals, 0, 10, 100, 255), 255.0f);
-
-}
-
-
-//--------------------------------------------------------------
 void ofApp::draw(){
-    ofBackground( ofColor::black);	//Set up the background
-    ofEnableAlphaBlending();
 
-    cam.begin();
-    if (show_spectrum){
-        //Draw background rect for spectrum
-        ofSetColor( ofColor::black );
-        ofFill();
-        ofDrawRectangle( 10, 700, N * 6, -100 );
-        //Draw spectrum
-        //ofSetColor( ofColor::ghostWhite );
-        for (int i=0; i<N; i++) {
-            //Draw bandRad and bandVel by black color,
-            //and other by gray color
-            if ( i == bandRad || i == bandVel ) {
-                ofSetColor( ofColor::orange ); //Black color
-            }
-            else {
-                ofSetColor( ofColor::lightGoldenRodYellow ); //Gray color
-            }
-            ofDrawRectangle( 10 + i * 5, 700, 3, -spectrum[i] * 100 );
-        }
+    if (showSpectrum){
+        drawSpectrum();
     }
-
-    //Draw cloud
 
     //Move center of coordinate system to the screen center
     ofPushMatrix();
     ofTranslate( ofGetWidth() / 2, ofGetHeight() / 2 );
 
+    cam.begin();
+
     //Draw points
-    ofEnableAlphaBlending();
-    ofColor drawColor;
-    ofFill();
-    brightness = 255;
-    for (int i = 0; i < n; ++i) {
-        float hue = ofMap(static_cast<float>(i), 0.0, static_cast<float>(n), 170.0f, 255.0f);
-        ofColor drawColor;
-        drawColor.setHsb(hue, 255, brightness, 120);
-        ofSetColor( drawColor ); // higher alpha is more opaque
-        ofDrawSphere( mesh.getVertex(i), 2 );
-    }
-
-    /*
-    //Draw lines between near points
-    float dist = 60;	//Threshold parameter of distance
-    for (int j=0; j<n; ++j) {
-        for (int k=j+1; k<n; ++k) {
-            if ( ofDist( p[j].x, p[j].y, p[k].x, p[k].y )
-                 < dist ) {
-                float hue = ofMap(static_cast<float>(j), 0.0, static_cast<float>(n), 170.0f, 255.0f);
-                ofColor drawColor;
-                drawColor.setHsb(hue, 255, brightness, 120);
-                ofSetColor( drawColor ); // higher alpha is more opaque
-                ofDrawLine( p[j], p[k] );
-            }
-        }
-    }
-    */
-
+    drawPoints();
     mesh.draw();
+
     cam.end();
     //Restore coordinate system
     ofPopMatrix();
@@ -202,13 +160,20 @@ void ofApp::draw(){
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
     switch (key) {
-        case 'g':
-            show_spectrum = !show_spectrum;
-            break;
-        case 'p':
-            sound.play();
-        default:
-            break;
+    case 'g':
+    case 'G':
+        showSpectrum = !showSpectrum;
+        break;
+    case 'p':
+    case 'P':
+        sound.play();
+        break;
+    case 'e':
+    case 'E':
+        earthOrbit = !earthOrbit;
+        break;
+    default:
+        break;
     }
 }
 
@@ -260,4 +225,79 @@ void ofApp::gotMessage(ofMessage msg){
 //--------------------------------------------------------------
 void ofApp::dragEvent(ofDragInfo dragInfo){
 
+}
+
+
+//--------------------------------------------------------------
+void ofApp::analyseFFT(){
+
+    //Calculate color based on range
+    std::vector<float>::iterator rg_it = std::next(spectrum.begin(), 10);
+    std::vector<float>::iterator gb_it = std::next(spectrum.begin(), 100);
+
+    bass = std::accumulate(spectrum.begin(), rg_it, 0.0f);
+    mids = std::accumulate(rg_it, gb_it, 0.0f);
+    highs = std::accumulate(gb_it, spectrum.end(), 0.0f);
+    totals = std::accumulate(spectrum.begin(), spectrum.end(), 0.0f);
+
+
+    red = static_cast<int>(std::min(ofMap(bass, 0, 6, 0, 255), 255.0f));
+    green = static_cast<int>(std::min(ofMap(mids, 0, 6, 0, 255), 255.0f));
+    blue = static_cast<int>(std::min(ofMap(highs, 0, 6, 0, 255), 255.0f));
+    brightness = std::min(ofMap(totals, 0, 10, 100, 255), 255.0f);
+
+}
+
+void ofApp::drawPoints(){
+    ofEnableAlphaBlending();
+    ofColor drawColor;
+    ofNoFill();
+    brightness = 255;
+    for (int i = 0; i < n; ++i) {
+        if (i == earthId)
+            continue;
+        drawPoint(i);
+    }
+    ofFill();
+    drawPoint(earthId);
+}
+
+void ofApp::drawPoint(int i){
+    float hue = ofMap(static_cast<float>(i), 0.0, static_cast<float>(n), 170.0f, 255.0f);
+    ofColor drawColor;
+    drawColor.setHsb(hue, 255, brightness, 120);
+    ofSetColor( drawColor ); // higher alpha is more opaque
+    ofDrawSphere( mesh.getVertex(i), 2 );
+}
+
+void ofApp::createMesh(){
+    for (int i = 0; i < n; ++i){
+        // assign a colour between blue and red
+        float hue = ofMap(static_cast<float>(i), 0.0, static_cast<float>(n), 0.66f, 1.0f);
+        ofFloatColor drawColor;
+        drawColor.setHsb(hue, 1.0, 1.0, 0.47);
+        // create point and push to mesh
+        ofVec3f temp(ofRandom(-500.0, 500.0), ofRandom(-500.0, 500.0), ofRandom(-500.0, 500.0));
+        points.push_back(temp);
+        mesh.addVertex(temp);
+        mesh.addColor(drawColor);
+    }
+}
+
+void ofApp::moveCamToPosition(ofNode node){
+
+}
+
+void ofApp::drawSpectrum(){
+    for (int i=0; i<N; i++) {
+        //Draw bandRad and bandVel by black color,
+        //and other by gray color
+        if ( i == bandRad || i == bandVel ) {
+            ofSetColor( ofColor::orange ); //Black color
+        }
+        else {
+            ofSetColor( ofColor::lightGoldenRodYellow ); //Gray color
+        }
+        ofDrawRectangle( 10 + i * 5, 700, 3, -spectrum[i] * 100 );
+    }
 }

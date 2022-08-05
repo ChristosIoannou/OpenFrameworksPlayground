@@ -3,7 +3,7 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
     //Set up sound sample
-    sound.load( "112 Balam - Yucatan.mp3" );
+    sound.load( "1-02 Quite OK.mp3" );
     sound.setLoop( true );
 
     spectrum.resize(N, 0.0f);
